@@ -19,6 +19,7 @@ from .chunks import ChunkData, Chunk
 from .core import Entity
 from .executable import _ToObjectMixin
 from .tileables import TileableData
+from ...core import is_build_mode
 
 
 class ObjectChunkData(ChunkData):
@@ -66,11 +67,24 @@ class ObjectData(TileableData, _ToObjectMixin):
         on_deserialize=lambda x: [ObjectChunk(it) for it in x] if x is not None else x,
     )
 
+    def _to_str(self, representation=False):
+        if is_build_mode() or len(self._executed_sessions) == 0:
+            if representation:
+                return f"{self.type_name} <op={type(self.op).__name__}, key={self.key}>"
+            else:
+                return f"{self.type_name}(op={type(self._op).__name__})"
+        else:
+            data = self.fetch(session=self._executed_sessions[-1])
+            return repr(data) if repr(data) else str(data)
+
     def __init__(self, op=None, nsplits=None, chunks=None, **kw):
         super().__init__(_op=op, _nsplits=nsplits, _chunks=chunks, **kw)
 
     def __repr__(self):
-        return f"Object <op={type(self.op).__name__}, key={self.key}>"
+        return self._to_str(representation=True)
+
+    def __str__(self):
+        return self._to_str(representation=False)
 
     @property
     def params(self):
