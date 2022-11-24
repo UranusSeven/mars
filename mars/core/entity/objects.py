@@ -19,7 +19,6 @@ from .chunks import ChunkData, Chunk
 from .core import Entity
 from .executable import _ToObjectMixin
 from .tileables import TileableData
-from ...core import is_build_mode
 
 
 class ObjectChunkData(ChunkData):
@@ -68,6 +67,8 @@ class ObjectData(TileableData, _ToObjectMixin):
     )
 
     def _to_str(self, representation=False):
+        from ...core import is_build_mode
+
         if is_build_mode() or len(self._executed_sessions) == 0:
             if representation:
                 return f"{self.type_name} <op={type(self.op).__name__}, key={self.key}>"
