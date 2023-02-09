@@ -204,7 +204,12 @@ class TaskInfoCollector:
 
     @collect_on_demand
     async def collect_runtime_operand_info(
-        self, subtask: Subtask, execute_time: float, chunk: ChunkType, processor_context
+        self,
+        subtask: Subtask,
+        start: float,
+        execute_time: float,
+        chunk: ChunkType,
+        processor_context,
     ):
         op = chunk.op
         if isinstance(op, (Fetch, FetchShuffle)):
@@ -213,6 +218,7 @@ class TaskInfoCollector:
         op_key = op.key
         op_info["op_name"] = type(op).__name__
         op_info["subtask_id"] = subtask.subtask_id
+        op_info["start_time"] = start
         op_info["execute_time"] = execute_time
         if chunk.key in processor_context:
             op_info["memory_use"] = calc_data_size(processor_context[chunk.key])
