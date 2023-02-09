@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import asyncio
 import functools
 import logging
 import os
 import tempfile
-from typing import Dict, List
 import yaml
 
 from ... import oscar as mo
@@ -135,7 +136,7 @@ class TaskInfoCollector:
 
     @collect_on_demand
     async def collect_last_node_info(
-        self, task: Task, subtask_graphs: List[SubtaskGraph]
+        self, task: Task, subtask_graphs: list[SubtaskGraph]
     ):
         last_op_keys = []
         last_subtask_keys = []
@@ -155,7 +156,7 @@ class TaskInfoCollector:
 
     @collect_on_demand
     async def collect_tileable_structure(
-        self, task: Task, tileable_to_subtasks: Dict[TileableType, List[Subtask]]
+        self, task: Task, tileable_to_subtasks: dict[TileableType, list[Subtask]]
     ):
         tileable_dict = dict()
         for tileable, subtasks in tileable_to_subtasks.items():
@@ -174,10 +175,10 @@ class TaskInfoCollector:
         subtask: Subtask,
         band: tuple,
         slot_id: int,
-        stored_keys: List[str],
-        store_sizes: Dict[str, int],
-        memory_sizes: Dict[str, int],
-        cost_times: Dict[str, Dict],
+        stored_keys: list[str],
+        store_sizes: dict[str, int],
+        memory_sizes: dict[str, int],
+        cost_times: dict[str, tuple],
     ):
         subtask_dict = dict()
         subtask_dict["band"] = band
@@ -207,7 +208,7 @@ class TaskInfoCollector:
         self,
         subtask: Subtask,
         start: float,
-        execute_time: float,
+        end: float,
         chunk: ChunkType,
         processor_context,
     ):
@@ -218,8 +219,7 @@ class TaskInfoCollector:
         op_key = op.key
         op_info["op_name"] = type(op).__name__
         op_info["subtask_id"] = subtask.subtask_id
-        op_info["start_time"] = start
-        op_info["execute_time"] = execute_time
+        op_info["execute_time"] = (start, end)
         if chunk.key in processor_context:
             op_info["memory_use"] = calc_data_size(processor_context[chunk.key])
             op_info["result_count"] = 1
@@ -252,7 +252,7 @@ class TaskInfoCollector:
             subtask.session_id,
         )
 
-    async def save_task_info(self, task_info: Dict, path: str, session_id: str):
+    async def save_task_info(self, task_info: dict, path: str, session_id: str):
         from .api.oscar import TaskAPI
 
         if self._task_api is None:
@@ -273,7 +273,7 @@ class TaskInfoCollectorActor(mo.Actor):
             )
         logger.info(f"Save task info in {self.yaml_root_dir}")
 
-    async def save_task_info(self, task_info: Dict, path: str):
+    async def save_task_info(self, task_info: dict, path: str):
         def save_info(task_info_, path_):
             abs_save_path = os.path.join(self.yaml_root_dir, path_)
             abs_save_dir, _ = os.path.split(abs_save_path)

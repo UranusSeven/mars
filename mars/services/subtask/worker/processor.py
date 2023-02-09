@@ -270,7 +270,11 @@ class SubtaskProcessor:
                         self.result.status = SubtaskStatus.cancelled
                         raise
                 await self._task_info_collector.collect_runtime_operand_info(
-                    self.subtask, timer.duration, chunk, self._processor_context
+                    self.subtask,
+                    timer.start,
+                    timer.start + timer.duration,
+                    chunk,
+                    self._processor_context,
                 )
             self.set_op_progress(chunk.op.key, 1.0)
 
@@ -550,7 +554,7 @@ class SubtaskProcessor:
         self.is_done.set()
 
     async def run(self):
-        cost_times = defaultdict(dict)
+        cost_times = defaultdict(tuple)
         self.result.status = SubtaskStatus.running
         input_keys = None
         unpinned = False
@@ -571,39 +575,46 @@ class SubtaskProcessor:
             }
 
             # load inputs data
-            cost_times["load_data_time"]["start_time"] = time.time()
-            input_keys = await self._load_input_data()
-            cost_times["load_data_time"]["end_time"] = time.time()
+            with Timer() as timer:
+                input_keys = await self._load_input_data()
+            cost_times["load_data_time"] = (timer.start, timer.start + timer.duration)
+
             try:
                 # execute chunk graph
-                cost_times["execute_time"]["start_time"] = time.time()
-                await self._execute_graph(chunk_graph)
-                cost_times["execute_time"]["end_time"] = time.time()
+                with Timer() as timer:
+                    await self._execute_graph(chunk_graph)
+                cost_times["execute_time"] = (timer.start, timer.start + timer.duration)
             finally:
                 # unpin inputs data
                 unpinned = True
-                cost_times["unpin_time"]["start_time"] = time.time()
-                await self._unpin_data(input_keys)
-                cost_times["unpin_time"]["end_time"] = time.time()
+                with Timer() as timer:
+                    await self._unpin_data(input_keys)
+                cost_times["unpin_time"] = (timer.start, timer.start + timer.duration)
+
             # store results data
-            cost_times["store_result_time"]["start_time"] = time.time()
-            (
-                stored_keys,
-                store_sizes,
-                memory_sizes,
-                data_key_to_object_id,
-            ) = await self._store_data(chunk_graph)
-            cost_times["store_result_time"]["end_time"] = time.time()
-            # store meta
-            cost_times["store_meta_time"]["start_time"] = time.time()
-            await self._store_meta(
-                chunk_graph,
-                store_sizes,
-                memory_sizes,
-                data_key_to_object_id,
-                update_meta_chunks,
+            with Timer() as timer:
+                (
+                    stored_keys,
+                    store_sizes,
+                    memory_sizes,
+                    data_key_to_object_id,
+                ) = await self._store_data(chunk_graph)
+            cost_times["store_result_time"] = (
+                timer.start,
+                timer.start + timer.duration,
             )
-            cost_times["store_meta_time"]["end_time"] = time.time()
+
+            # store meta
+            with Timer() as timer:
+                await self._store_meta(
+                    chunk_graph,
+                    store_sizes,
+                    memory_sizes,
+                    data_key_to_object_id,
+                    update_meta_chunks,
+                )
+            cost_times["store_meta_time"] = (timer.start, timer.start + timer.duration)
+
             await self._task_info_collector.collect_runtime_subtask_info(
                 self.subtask,
                 self._band,
